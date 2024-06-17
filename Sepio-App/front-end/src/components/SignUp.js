@@ -123,7 +123,7 @@ export default function InputSubscription({ setUsername }) {
 
   const handleSubmit = (event) => {
     event.preventDefault();
-    if (data.text === 'admin' && password === 'admin') {
+    if (password === 'admin') {
       setData((current) => ({ ...current, status: 'loading' }));
       setUsername(data.text);
       // Simulate backend request

@@ -1120,6 +1120,57 @@
 
 
 //current
+// const path = require('path');
+// const express = require('express');
+// const speakeasy = require('speakeasy');
+// const qrcode = require('qrcode');
+// const bodyParser = require('body-parser');
+// const cors = require('cors');
+
+// const app = express();
+// app.use(bodyParser.json());
+// app.use(cors());
+
+// let tempSecret;
+
+// app.post('/generate', (req, res) => {
+//   const secret = speakeasy.generateSecret();
+//   tempSecret = secret.base32;
+//   qrcode.toDataURL(secret.otpauth_url, (err, data_url) => {
+//     res.json({ secret: secret.base32, qrCode: data_url });
+//   });
+// });
+
+// app.post('/verify', (req, res) => {
+//   const { token } = req.body;
+//   const verified = speakeasy.totp.verify({
+//     secret: tempSecret,
+//     encoding: 'base32',
+//     token,
+//   });
+
+//   if (verified) {
+//     res.json({ verified: true });
+//   } else {
+//     res.json({ verified: false });
+//   }
+// });
+
+// app.use(express.static(path.join(__dirname, '../front-end/build')));
+
+// // Serve React app for any other routes
+// app.get('*', (req, res) => {
+//   res.sendFile(path.join(__dirname, '../front-end/build/index.html'));
+// });
+
+// const PORT = process.env.PORT || 3000;
+// app.listen(PORT, () => {
+//   console.log(`Server running on port ${PORT}`);
+// });
+
+
+
+
 const path = require('path');
 const express = require('express');
 const speakeasy = require('speakeasy');
@@ -1131,20 +1182,31 @@ const app = express();
 app.use(bodyParser.json());
 app.use(cors());
 
-let tempSecret;
+const userSecrets = {}; // Store user secrets in memory
 
 app.post('/generate', (req, res) => {
-  const secret = speakeasy.generateSecret();
-  tempSecret = secret.base32;
-  qrcode.toDataURL(secret.otpauth_url, (err, data_url) => {
-    res.json({ secret: secret.base32, qrCode: data_url });
-  });
+  const { username } = req.body;
+  if (userSecrets[username]) {
+    // User already has a secret
+    res.json({ connected: true });
+  } else {
+    const secret = speakeasy.generateSecret();
+    userSecrets[username] = secret.base32;
+    qrcode.toDataURL(secret.otpauth_url, (err, data_url) => {
+      res.json({ connected: false, secret: secret.base32, qrCode: data_url });
+    });
+  }
 });
 
 app.post('/verify', (req, res) => {
-  const { token } = req.body;
+  const { username, token } = req.body;
+  const secret = userSecrets[username];
+  if (!secret) {
+    return res.status(400).json({ verified: false, message: 'User not connected to 2FA' });
+  }
+
   const verified = speakeasy.totp.verify({
-    secret: tempSecret,
+    secret: secret,
     encoding: 'base32',
     token,
   });
@@ -1167,7 +1229,5 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
-
-
 
 
